@@ -59,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/error", "/oauth2/**", "/login/oauth2/code/**", "/auth/login/success").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/organizations").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/organizations").permitAll()
-                        .requestMatchers("/api/account/**").hasAnyAuthority("SCOPE_email")
+                        .requestMatchers(HttpMethod.POST, "/api/account/onboarding").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/products").permitAll()
                         .anyRequest().authenticated()
                 )
