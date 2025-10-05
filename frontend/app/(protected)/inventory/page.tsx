@@ -884,11 +884,14 @@ export default function Inventory() {
                         Ref: {transaction.referenceId}
                       </p>
                     )}
-                    {(transaction.createdByName || transaction.createdByEmail) && (
+                    {(transaction.createdByName ||
+                      transaction.createdByEmail) && (
                       <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
                         <User className="w-3 h-3" />
                         <span>
-                          By: {transaction.createdByName || transaction.createdByEmail}
+                          By:{" "}
+                          {transaction.createdByName ||
+                            transaction.createdByEmail}
                         </span>
                       </div>
                     )}
