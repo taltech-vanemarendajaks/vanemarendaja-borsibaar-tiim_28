@@ -83,39 +83,39 @@ This file contains the complete database schema evolution with numbered changese
 
 ```bash
 # Start the full development environment (from project root)
-docker-compose up
+docker compose up
 
 # Start only backend and database
-docker-compose up postgres backend
+docker compose up postgres backend
 
 # Run backend in development mode (with hot reload)
-docker-compose up backend
+docker compose up backend
 
 # Execute commands inside the running backend container
-docker-compose exec backend ./mvnw clean package
-docker-compose exec backend ./mvnw test
-docker-compose exec backend ./mvnw spring-boot:run
+docker compose exec backend ./mvnw clean package
+docker compose exec backend ./mvnw test
+docker compose exec backend ./mvnw spring-boot:run
 
 # Run tests inside container
-docker-compose exec backend ./mvnw test
+docker compose exec backend ./mvnw test
 
 # Run single test class inside container
-docker-compose exec backend ./mvnw test -Dtest=ClassNameTest
+docker compose exec backend ./mvnw test -Dtest=ClassNameTest
 
 # Run tests for specific package inside container
-docker-compose exec backend ./mvnw test -Dtest="com.borsibaar.backend.service.*"
+docker compose exec backend ./mvnw test -Dtest="com.borsibaar.backend.service.*"
 
 # Build the backend inside container
-docker-compose exec backend ./mvnw clean package
+docker compose exec backend ./mvnw clean package
 
 # Access backend container shell for debugging
-docker-compose exec backend bash
+docker compose exec backend bash
 
 # View backend logs
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Restart backend service
-docker-compose restart backend
+docker compose restart backend
 ```
 
 ## Key Technologies & Dependencies
@@ -164,12 +164,12 @@ When writing tests inside Docker containers:
 - Mock services in controller tests
 - Test security configuration with `@SpringSecurity` test annotations
 - Ensure organization-based data isolation in tests
-- Always run tests via `docker-compose exec backend ./mvnw test`
+- Always run tests via `docker compose exec backend ./mvnw test`
 
 ## Debugging
 
 For debugging the backend:
-1. Use `docker-compose logs -f backend` to view application logs
-2. Access the container shell with `docker-compose exec backend bash`
+1. Use `docker compose logs -f backend` to view application logs
+2. Access the container shell with `docker compose exec backend bash`
 3. Check application properties and environment variables inside container
 4. Use Docker port mapping to connect external debugging tools if needed
