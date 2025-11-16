@@ -58,6 +58,9 @@ public class InventoryService {
 
                                         if (product == null)
                                                 return null;
+                                        if (!product.isActive()) {
+                                                return null;
+                                        }
 
                                         String productName = product.getName();
                                         BigDecimal unitPrice = Optional.ofNullable(inv.getAdjustedPrice())
@@ -90,6 +93,9 @@ public class InventoryService {
                 InventoryResponseDto base = inventoryMapper.toResponse(inventory);
                 Product product = productRepository.findById(productId)
                                 .orElse(null);
+                if (!product.isActive()) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "Product is deleted");
+                }
 
                 String productName = product != null ? product.getName() : "Unknown Product";
                 BigDecimal unitPrice = BigDecimal.ZERO;
@@ -123,6 +129,9 @@ public class InventoryService {
                 if (!product.getOrganizationId().equals(organizationId)) {
                         throw new ResponseStatusException(
                                         HttpStatus.FORBIDDEN, "Product does not belong to your organization");
+                }
+                if (!product.isActive()) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "Product is deleted");
                 }
 
                 // Get or create inventory
@@ -178,6 +187,9 @@ public class InventoryService {
                         throw new ResponseStatusException(
                                         HttpStatus.FORBIDDEN, "Product does not belong to your organization");
                 }
+                if (!product.isActive()) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "Product is deleted");
+                }
 
                 Inventory inventory = inventoryRepository
                                 .findByOrganizationIdAndProductId(organizationId, request.productId())
@@ -230,6 +242,9 @@ public class InventoryService {
                 if (!product.getOrganizationId().equals(organizationId)) {
                         throw new ResponseStatusException(
                                         HttpStatus.FORBIDDEN, "Product does not belong to your organization");
+                }
+                if (!product.isActive()) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "Product is deleted");
                 }
 
                 Inventory inventory = inventoryRepository
