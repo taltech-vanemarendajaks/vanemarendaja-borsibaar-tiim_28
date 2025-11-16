@@ -41,8 +41,6 @@ build-frontend:
     paths:
       - frontend/.next/
       - frontend/public/
-      - frontend/package.json
-      - frontend/package-lock.json
     expire_in: 1 hour
   only:
     - main
@@ -64,7 +62,7 @@ deploy-job:
     - cp $ENV_PRODUCTION_FILE .env.production
     
     # Create deployment package
-    - tar czf deployment.tar.gz backend/target/*.jar frontend/.next/ frontend/public/ frontend/package*.json docker-compose.prod.yaml backend/Dockerfile .env.production
+    - tar czf deployment.tar.gz backend/target/*.jar frontend/ docker-compose.prod.yaml backend/Dockerfile .env.production
     
     # Copy to server
     - scp deployment.tar.gz $SSH_USER@$SERVER_IP:/tmp/
@@ -78,10 +76,6 @@ deploy-job:
         # Extract deployment package
         tar xzf /tmp/deployment.tar.gz
         rm /tmp/deployment.tar.gz
-        
-        # Debug: Check what files were extracted
-        echo "Files in deployment directory:"
-        ls -la
         
         # Check if docker-compose.prod.yaml exists
         if [ ! -f $DOCKER_COMPOSE_FILE ]; then
@@ -100,8 +94,20 @@ deploy-job:
         # Rebuild and start containers
         docker-compose -f $DOCKER_COMPOSE_FILE build --no-cache
         docker-compose -f $DOCKER_COMPOSE_FILE up -d
+
+        # Deploy frontend (standalone)
+        sudo cp -r /tmp/frontend/.next $NGINX_ROOT/
+        sudo cp -r /tmp/frontend/public $NGINX_ROOT/
+
+        # Set correct permissions
+        sudo chown -R www-data:www-data $NGINX_ROOT
+        sudo chmod -R 755 $NGINX_ROOT
+
+        # Reload nginx
+        sudo nginx -t && sudo nginx -s reload
         
         # Clean up old images
+        rm -rf /tmp/backend /tmp/frontend /tmp/.env.production
         docker image prune -f
         
         echo "Deployment complete!"
