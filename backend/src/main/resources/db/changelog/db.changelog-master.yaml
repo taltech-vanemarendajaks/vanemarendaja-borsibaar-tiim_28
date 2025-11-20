@@ -922,3 +922,32 @@ databaseChangeLog:
             referencedColumnNames: id
             onDelete: SET NULL
             onUpdate: RESTRICT
+
+  - changeSet:
+      id: 014-add-price-increase-decrease-steps-to-organizations
+      author: arto
+      changes:
+        - addColumn:
+            tableName: organizations
+            columns:
+              - column:
+                  name: price_increase_step
+                  type: DECIMAL(19,4)
+                  defaultValueNumeric: 0.50
+                  remarks: "Default price increase step for products in this organization"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price_decrease_step
+                  type: DECIMAL(19,4)
+                  defaultValueNumeric: 0.50
+                  remarks: "Default price decrease step for products in this organization"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            columnName: price_increase_step
+            tableName: organizations
+        - dropColumn:
+            columnName: price_decrease_step
+            tableName: organizations
