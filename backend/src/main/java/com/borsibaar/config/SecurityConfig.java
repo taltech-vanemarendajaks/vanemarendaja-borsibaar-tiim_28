@@ -73,6 +73,7 @@ public class SecurityConfig {
                         // Public API endpoints
                         .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/organizations").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/organizations/**").hasRole("ADMIN")
                         // Need to make these public for client page
                         // TODO: these should not be fully public
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
