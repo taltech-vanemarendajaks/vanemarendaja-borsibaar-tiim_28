@@ -1,7 +1,7 @@
 # Team Tiim_28
 
 ## Members
-- Kaira – github: username1
+- Kaira – github: ?????
 - Marleen – github: marleenu
 - Lauri – github: uLauri
 - Enrico – github: District4k
