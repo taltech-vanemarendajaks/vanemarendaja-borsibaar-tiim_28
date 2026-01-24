@@ -12,6 +12,9 @@ import {
   User,
   ListPlus,
   Trash,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface InventoryTransactionResponseDto {
@@ -85,6 +88,8 @@ export default function Inventory() {
     initialQuantity: "",
     notes: "",
   });
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetchInventory();
@@ -402,6 +407,51 @@ export default function Inventory() {
     return item.productName.toLowerCase().includes(searchTerm.toLowerCase())
   }
   ) : inventory;
+
+  // Sortimise handler
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Kui sama veerg, vaheta suunda
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Uus veerg, alusta kasvavast järjestusest
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sorteeritud inventory
+  const getSortedInventory = () => {
+    if (!sortColumn) return filteredInventory;
+    
+    return [...filteredInventory].sort((a, b) => {
+      // @ts-expect-error: types aren't imported currently from backend
+      let aVal = a[sortColumn];
+      // @ts-expect-error: types aren't imported currently from backend
+      let bVal = b[sortColumn];
+      
+      // Numbrilised väärtused
+      if (['basePrice', 'quantity', 'minPrice', 'maxPrice'].includes(sortColumn)) {
+        aVal = parseFloat(aVal) || 0;
+        bVal = parseFloat(bVal) || 0;
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      // Kuupäevad
+      if (sortColumn === 'updatedAt') {
+        return sortDirection === 'asc' 
+          ? new Date(aVal).getTime() - new Date(bVal).getTime()
+          : new Date(bVal).getTime() - new Date(aVal).getTime();
+      }
+      
+      // Stringid (productName)
+      return sortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    });
+  };
+
+  const sortedInventory = getSortedInventory();
 
   // @ts-expect-error: types aren't imported currently from backend
   const getStockStatus = (quantity) => {
