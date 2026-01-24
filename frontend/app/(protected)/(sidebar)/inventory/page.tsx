@@ -531,26 +531,80 @@ export default function Inventory() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-400">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Product
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('productName')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Product
+                      {sortColumn === 'productName' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'productName' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Current Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('basePrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Current Price
+                      {sortColumn === 'basePrice' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'basePrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Min Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('minPrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Min Price
+                      {sortColumn === 'minPrice' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'minPrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Max Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('maxPrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Max Price
+                      {sortColumn === 'maxPrice' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'maxPrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-300">
-                    Quantity
+                  <th 
+                    className="text-center py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('quantity')}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      Quantity
+                      {sortColumn === 'quantity' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'quantity' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
                     Status
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Last Updated
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('updatedAt')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Last Updated
+                      {sortColumn === 'updatedAt' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                      )}
+                      {sortColumn !== 'updatedAt' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                    </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
                     Actions
@@ -558,14 +612,14 @@ export default function Inventory() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInventory.length === 0 ? (
+                {sortedInventory.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-gray-400">
                       No inventory items found
                     </td>
                   </tr>
                 ) : (
-                  filteredInventory.map((item) => {
+                  sortedInventory.map((item) => {
                     // @ts-expect-error: types aren't imported currently from backend
                     const status = getStockStatus(item.quantity);
                     return (
