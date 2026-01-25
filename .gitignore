@@ -3,6 +3,7 @@ backend/.env
 .idea/
 
 .vscode/
+.docker-compose.yaml
 
 # SSL certificates (copied during deployment, not committed)
 nginx/ssl/
