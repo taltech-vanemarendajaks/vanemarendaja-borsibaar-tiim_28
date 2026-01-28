@@ -1,12 +1,4 @@
-<<<<<<< HEAD
 # Team Tiim_28
-
-## Members
-- Kaira – github: ?????
-- Marleen – github: marleenu
-- Lauri – github: uLauri
-- Enrico – github: District4k
-- Jarmo – github: Jarmo164
 
 ## Workflow
 - main branch is protected (no direct pushes)
@@ -17,10 +9,8 @@
 ## Merge strategies used ?????
 - Merge commit: used for feature X because ...
 - Squash merge: used for feature Y because ...
-=======
-Team name: TEAM 28
 
-Team members:
+## Team members:
 |   Name  |    Role     |    GitHub   |
 |---------|-------------|-------------|
 | Enrico  | Contributor | @District4k |
@@ -28,7 +18,7 @@ Team members:
 | Marleen | Contributor | @marleenu   |
 | Lauri   | Contributor | @uLauri     |
 
-WORKFLOW
+## WORKFLOW
 
 Branches:
 - Main branch
@@ -41,4 +31,3 @@ Branches:
 Code review:
 - Create pull requests to merge feature branch to  dev branch.
 - When creating a pull request, first step: read the changes carefully yourself first. Then add 2 contributors as reviewers.
->>>>>>> 8cabbf5 (add TEAM.md)
