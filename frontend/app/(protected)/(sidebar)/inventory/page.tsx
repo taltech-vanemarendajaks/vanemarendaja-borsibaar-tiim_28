@@ -95,6 +95,13 @@ export default function Inventory() {
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
+  const renderSortIcon = (currentSortColumn: SortableColumn | null, direction: SortDirection, column: SortableColumn) => {
+    if (currentSortColumn === column) {
+      return direction === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-30" />;
+  };
+
   useEffect(() => {
     fetchInventory();
     fetchCategories();
@@ -541,10 +548,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center gap-2">
                       Product
-                      {sortColumn === 'productName' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'productName' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'productName')}
                     </div>
                   </th>
                   <th 
@@ -553,10 +557,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center gap-2">
                       Current Price
-                      {sortColumn === 'basePrice' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'basePrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'basePrice')}
                     </div>
                   </th>
                   <th 
@@ -565,10 +566,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center gap-2">
                       Min Price
-                      {sortColumn === 'minPrice' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'minPrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'minPrice')}
                     </div>
                   </th>
                   <th 
@@ -577,10 +575,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center gap-2">
                       Max Price
-                      {sortColumn === 'maxPrice' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'maxPrice' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'maxPrice')}
                     </div>
                   </th>
                   <th 
@@ -589,10 +584,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center justify-center gap-2">
                       Quantity
-                      {sortColumn === 'quantity' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'quantity' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'quantity')}
                     </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
@@ -604,10 +596,7 @@ export default function Inventory() {
                   >
                     <div className="flex items-center gap-2">
                       Last Updated
-                      {sortColumn === 'updatedAt' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                      )}
-                      {sortColumn !== 'updatedAt' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      {renderSortIcon(sortColumn, sortDirection, 'updatedAt')}
                     </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
