@@ -31,6 +31,10 @@ interface InventoryTransactionResponseDto {
   createdByEmail?: string;
   createdAt: string;
 }
+
+type SortableColumn = 'productName' | 'basePrice' | 'minPrice' | 'maxPrice' | 'quantity' | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
+
 import {
   Select,
   SelectContent,
@@ -88,8 +92,8 @@ export default function Inventory() {
     initialQuantity: "",
     notes: "",
   });
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
     fetchInventory();
@@ -409,7 +413,7 @@ export default function Inventory() {
   ) : inventory;
 
   // Sortimise handler
-  const handleSort = (column: string) => {
+  const handleSort = (column: SortableColumn) => {
     if (sortColumn === column) {
       // Kui sama veerg, vaheta suunda
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -426,15 +430,15 @@ export default function Inventory() {
     
     return [...filteredInventory].sort((a, b) => {
       // @ts-expect-error: types aren't imported currently from backend
-      let aVal = a[sortColumn];
+      const aVal = a[sortColumn];
       // @ts-expect-error: types aren't imported currently from backend
-      let bVal = b[sortColumn];
+      const bVal = b[sortColumn];
       
       // Numbrilised väärtused
       if (['basePrice', 'quantity', 'minPrice', 'maxPrice'].includes(sortColumn)) {
-        aVal = parseFloat(aVal) || 0;
-        bVal = parseFloat(bVal) || 0;
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        const aNum = parseFloat(aVal) || 0;
+        const bNum = parseFloat(bVal) || 0;
+        return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
       }
       
       // Kuupäevad
