@@ -12,6 +12,9 @@ import {
   User,
   ListPlus,
   Trash,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface InventoryTransactionResponseDto {
@@ -28,6 +31,10 @@ interface InventoryTransactionResponseDto {
   createdByEmail?: string;
   createdAt: string;
 }
+
+type SortableColumn = 'productName' | 'basePrice' | 'minPrice' | 'maxPrice' | 'quantity' | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
+
 import {
   Select,
   SelectContent,
@@ -85,6 +92,15 @@ export default function Inventory() {
     initialQuantity: "",
     notes: "",
   });
+  const [sortColumn, setSortColumn] = useState<SortableColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const renderSortIcon = (currentSortColumn: SortableColumn | null, direction: SortDirection, column: SortableColumn) => {
+    if (currentSortColumn === column) {
+      return direction === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+    }
+    return <ArrowUpDown className="w-4 h-4 opacity-30" />;
+  };
 
   useEffect(() => {
     fetchInventory();
@@ -403,6 +419,51 @@ export default function Inventory() {
   }
   ) : inventory;
 
+  // Sortimise handler
+  const handleSort = (column: SortableColumn) => {
+    if (sortColumn === column) {
+      // Kui sama veerg, vaheta suunda
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Uus veerg, alusta kasvavast järjestusest
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sorteeritud inventory
+  const getSortedInventory = () => {
+    if (!sortColumn) return filteredInventory;
+    
+    return [...filteredInventory].sort((a, b) => {
+      // @ts-expect-error: types aren't imported currently from backend
+      const aVal = a[sortColumn];
+      // @ts-expect-error: types aren't imported currently from backend
+      const bVal = b[sortColumn];
+      
+      // Numbrilised väärtused
+      if (['basePrice', 'quantity', 'minPrice', 'maxPrice'].includes(sortColumn)) {
+        const aNum = parseFloat(aVal) || 0;
+        const bNum = parseFloat(bVal) || 0;
+        return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+      }
+      
+      // Kuupäevad
+      if (sortColumn === 'updatedAt') {
+        return sortDirection === 'asc' 
+          ? new Date(aVal).getTime() - new Date(bVal).getTime()
+          : new Date(bVal).getTime() - new Date(aVal).getTime();
+      }
+      
+      // Stringid (productName)
+      return sortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    });
+  };
+
+  const sortedInventory = getSortedInventory();
+
   // @ts-expect-error: types aren't imported currently from backend
   const getStockStatus = (quantity) => {
     const qty = parseFloat(quantity);
@@ -481,26 +542,62 @@ export default function Inventory() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-400">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Product
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('productName')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Product
+                      {renderSortIcon(sortColumn, sortDirection, 'productName')}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Current Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('basePrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Current Price
+                      {renderSortIcon(sortColumn, sortDirection, 'basePrice')}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Min Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('minPrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Min Price
+                      {renderSortIcon(sortColumn, sortDirection, 'minPrice')}
+                    </div>
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Max Price
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('maxPrice')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Max Price
+                      {renderSortIcon(sortColumn, sortDirection, 'maxPrice')}
+                    </div>
                   </th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-300">
-                    Quantity
+                  <th 
+                    className="text-center py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('quantity')}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      Quantity
+                      {renderSortIcon(sortColumn, sortDirection, 'quantity')}
+                    </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
                     Status
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-300">
-                    Last Updated
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-300 cursor-pointer hover:bg-gray-700 transition-colors"
+                    onClick={() => handleSort('updatedAt')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Last Updated
+                      {renderSortIcon(sortColumn, sortDirection, 'updatedAt')}
+                    </div>
                   </th>
                   <th className="text-center py-3 px-4 font-semibold text-gray-300">
                     Actions
@@ -508,14 +605,14 @@ export default function Inventory() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInventory.length === 0 ? (
+                {sortedInventory.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-gray-400">
                       No inventory items found
                     </td>
                   </tr>
                 ) : (
-                  filteredInventory.map((item) => {
+                  sortedInventory.map((item) => {
                     // @ts-expect-error: types aren't imported currently from backend
                     const status = getStockStatus(item.quantity);
                     return (
