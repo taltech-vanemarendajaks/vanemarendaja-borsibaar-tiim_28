@@ -1063,7 +1063,7 @@ export default function Inventory() {
             {/* Add Current Price input for editing product price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Current Price *
+                Current Price
               </label>
               <Input
                 type="number"
