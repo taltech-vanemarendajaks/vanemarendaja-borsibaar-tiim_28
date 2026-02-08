@@ -1157,6 +1157,24 @@ export default function Inventory() {
                 placeholder="Enter new quantity"
               />
             </div>
+            {/* Add Current Price input for editing product price */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Current Price
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={productForm.currentPrice}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, currentPrice: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="0.00"
+                required
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes (Optional)
