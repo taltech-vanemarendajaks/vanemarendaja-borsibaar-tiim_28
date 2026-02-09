@@ -1,0 +1,48 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: ["dev"]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create env file from secret
+        run: |
+          printf "%s" "${{ secrets.ENV_DEVELOPMENT_FILE }}" > .env.development
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY_DEV }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SERVER_IP_DEV }}" >> ~/.ssh/known_hosts
+
+      - name: Sync project to dev server
+        run: |
+          rsync -az --delete \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "node_modules" \
+            ./ "${{ secrets.SSH_USER_DEV }}@${{ secrets.SERVER_IP_DEV }}:/var/www/myapp-dev/"
+
+      - name: Apply env + restart app
+        run: |
+          ssh "${{ secrets.SSH_USER_DEV }}@${{ secrets.SERVER_IP_DEV }}" << 'EOF'
+            set -e
+            cd /var/www/myapp-dev
+            mv -f .env.development .env
+            docker compose up -d --build
+          EOF
