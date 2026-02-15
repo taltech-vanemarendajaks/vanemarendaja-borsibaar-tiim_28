@@ -16,8 +16,8 @@ jobs:
 
       - name: Build frontend image
         run: |
-          docker build --platform linux/amd64 --build-arg NEXT_PUBLIC_BACKEND_URL="https://borsibaar28.zapto.org" -t borsibaar-team28-frontend:latest ./frontend
-          docker save borsibaar-team28-frontend:latest > frontend.tar
+          docker build --platform linux/amd64 --build-arg NEXT_PUBLIC_BACKEND_URL="https://borsibaar28.zapto.org" -t vanemarendaja-borsibaar-tiim_28:latest ./frontend
+          docker save vanemarendaja-borsibaar-tiim_28:latest > frontend.tar
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -33,8 +33,8 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build -t borsibaar-team28-backend:latest ./backend
-          docker save borsibaar-team28-backend:latest > backend.tar
+          docker build -t vanemarendaja-borsibaar-tiim_28-backend:latest ./backend
+          docker save vanemarendaja-borsibaar-tiim_28-backend:latest > backend.tar
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -50,15 +50,12 @@ jobs:
           scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
           scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
 
-      - name: SSH and load images into registry
+      - name: Load images and deploy
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
             cd /home/${{ secrets.SSH_USER }}/borsibaar/testGA &&
             sudo docker load < frontend.tar &&
             sudo docker load < backend.tar &&
-            sudo docker tag borsibaar-team28-frontend:latest localhost:5000/borsibaar-team28-frontend:latest &&
-            sudo docker tag borsibaar-team28-backend:latest localhost:5000/borsibaar-team28-backend:latest &&
-            sudo docker push localhost:5000/borsibaar-team28-frontend:latest &&
-            sudo docker push localhost:5000/borsibaar-team28-backend:latest &&
-            sudo docker compose pull &&
-            sudo docker compose up -d"
+            sudo docker tag vanemarendaja-borsibaar-tiim_28:latest vanemarendaja-borsibaar-tiim_28-frontend:latest &&
+            sudo docker tag vanemarendaja-borsibaar-tiim_28-backend:latest vanemarendaja-borsibaar-tiim_28-backend:latest &&
+            sudo docker compose -f docker-compose.prod.yaml up -d"
