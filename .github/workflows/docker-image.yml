@@ -12,7 +12,7 @@ jobs:
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
-      DEPLOY_PATH: ~/studentbar-pos-deploy
+      DEPLOY_PATH: /home/ubuntu/studentbar-pos-deploy
       ENV_PRODUCTION_FILE: ${{ secrets.ENV_PRODUCTION_FILE }}
       DOCKER_COMPOSE_FILE: docker-compose.prod.yaml
 
