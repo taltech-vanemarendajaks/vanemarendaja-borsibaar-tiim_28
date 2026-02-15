@@ -41,14 +41,20 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Create .env file from secret
+        run: |
+          printf '%s\n' "${{ secrets.ENV_PRODUCTION_FILE }}" > .env
+
       - name: Ensure target directory exists on server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA"
 
-      - name: Copy images to server
+      - name: Copy files to server
         run: |
           scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
           scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
 
       - name: Load images and deploy
         run: |
