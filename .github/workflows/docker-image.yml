@@ -64,6 +64,10 @@ jobs:
       - name: Create deployment package
         run: |
           tar czf deployment.tar.gz \
+            --exclude='frontend/node_modules' \
+            --exclude='frontend/.git' \
+            --exclude='frontend/.cache' \
+            --exclude='frontend/.next/cache' \
             backend/target/*.jar \
             frontend/ \
             nginx/ \
