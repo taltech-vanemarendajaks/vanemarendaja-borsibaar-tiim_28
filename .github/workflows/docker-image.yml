@@ -89,26 +89,26 @@ jobs:
             "$SSH_USER@$SERVER_IP" \
             "echo SSH_OK && whoami && hostname && touch /tmp/gha-ssh-ok-${GITHUB_RUN_ID} && ls -l /tmp/gha-ssh-ok-${GITHUB_RUN_ID}"
        
-      - name: SCP legacy protocol test (-O)
+      - name: SSH stream copy test (no scp)
         run: |
           set -euxo pipefail
-        
-          TEST_LOCAL="/tmp/scp-test.bin"
-          TEST_REMOTE="/tmp/scp-legacy-${GITHUB_RUN_ID}.bin"
-        
-          dd if=/dev/urandom of="$TEST_LOCAL" bs=1M count=1 status=none
+      
+          TEST_LOCAL="/tmp/stream-test.bin"
+          TEST_REMOTE="/tmp/stream-test-${GITHUB_RUN_ID}.bin"
+      
+          dd if=/dev/urandom of="$TEST_LOCAL" bs=1M count=2 status=none
           echo "Local checksum:"
           sha256sum "$TEST_LOCAL"
-        
-          timeout 60 scp -O -v -C -i ~/.ssh/id_rsa \
+      
+          timeout 60 bash -c "cat '$TEST_LOCAL' | ssh -i ~/.ssh/id_rsa \
             -o IdentitiesOnly=yes \
             -o BatchMode=yes \
             -o PreferredAuthentications=publickey \
             -o ConnectTimeout=10 \
             -o StrictHostKeyChecking=yes \
-            "$TEST_LOCAL" \
-            "$SSH_USER@$SERVER_IP:$TEST_REMOTE"
-        
+            '$SSH_USER@$SERVER_IP' \
+            'cat > \"$TEST_REMOTE\"'"
+      
           echo "Remote checksum:"
           ssh -i ~/.ssh/id_rsa \
             -o IdentitiesOnly=yes \
