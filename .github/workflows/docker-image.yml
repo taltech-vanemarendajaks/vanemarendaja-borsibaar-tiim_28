@@ -87,28 +87,47 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client
-      - name: Copy deployment package to server
+      - name: Copy deployment package to server (with integrity check)
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-
+          REMOTE_TMP="/tmp/${TAR_NAME}.part"
+          REMOTE_FINAL="/tmp/${TAR_NAME}"
+      
+          LOCAL_SHA=$(sha256sum deployment.tar.gz | awk '{print $1}')
+          LOCAL_SIZE=$(stat -c%s deployment.tar.gz)
+          echo "Local size: ${LOCAL_SIZE} bytes"
+          echo "Local sha256: ${LOCAL_SHA}"
+      
           scp -C -i ~/.ssh/id_rsa \
             -o IdentitiesOnly=yes \
             -o BatchMode=yes \
-            -o ConnectTimeout=15 \
+            -o ConnectTimeout=20 \
             -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=3 \
+            -o ServerAliveCountMax=6 \
             -o StrictHostKeyChecking=yes \
             deployment.tar.gz \
-            "$SSH_USER@$SERVER_IP:/tmp/$TAR_NAME"
-
-          # Debug: kinnita, et fail päriselt jõudis serverisse
+            "$SSH_USER@$SERVER_IP:$REMOTE_TMP"
+      
+          REMOTE_SHA=$(ssh -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SERVER_IP" "sha256sum '$REMOTE_TMP' | awk '{print \$1}'")
+      
+          if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+            echo "ERROR: checksum mismatch (upload incomplete/corrupt)"
+            echo "LOCAL : $LOCAL_SHA"
+            echo "REMOTE: $REMOTE_SHA"
+            exit 1
+          fi
+      
           ssh -i ~/.ssh/id_rsa \
             -o IdentitiesOnly=yes \
             -o BatchMode=yes \
-            -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" "ls -lh /tmp/$TAR_NAME"
+            "$SSH_USER@$SERVER_IP" "mv '$REMOTE_TMP' '$REMOTE_FINAL' && ls -lh '$REMOTE_FINAL'"
+           
 
       - name: Deploy on server
         run: |
