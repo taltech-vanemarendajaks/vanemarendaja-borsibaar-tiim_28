@@ -88,16 +88,32 @@ jobs:
             -o StrictHostKeyChecking=yes \
             "$SSH_USER@$SERVER_IP" \
             "echo SSH_OK && whoami && hostname && touch /tmp/gha-ssh-ok-${GITHUB_RUN_ID} && ls -l /tmp/gha-ssh-ok-${GITHUB_RUN_ID}"
-
-      - name: Copy deployment package to server
+      - name: SCP channel test (1MB)
         run: |
-          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-          mv deployment.tar.gz "$TAR_NAME"
-          scp -i ~/.ssh/id_rsa \
+          set -euxo pipefail
+      
+          TEST_LOCAL="/tmp/scp-test.bin"
+          TEST_REMOTE="/tmp/scp-test-${GITHUB_RUN_ID}.bin"
+      
+          dd if=/dev/urandom of="$TEST_LOCAL" bs=1M count=1 status=none
+          echo "Local checksum:"
+          sha256sum "$TEST_LOCAL"
+      
+          timeout 60 scp -v -C -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o PreferredAuthentications=publickey \
+            -o ConnectTimeout=10 \
             -o StrictHostKeyChecking=yes \
-            "$TAR_NAME" \
-            "$SSH_USER@$SERVER_IP:/tmp/$TAR_NAME"
-
+            "$TEST_LOCAL" \
+            "$SSH_USER@$SERVER_IP:$TEST_REMOTE"
+      
+          echo "Remote checksum:"
+          ssh -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SERVER_IP" "sha256sum '$TEST_REMOTE' && ls -lh '$TEST_REMOTE'"
       - name: Deploy on server
         run: |
           TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
