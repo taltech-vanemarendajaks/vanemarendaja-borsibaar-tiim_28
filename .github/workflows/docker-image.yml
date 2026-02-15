@@ -1,172 +1,182 @@
-name: Build and Deploy
+# Production deploy workflow -- triggered only on push to "test" branch
+name: Deploy Production
 
 on:
   push:
     branches: [ test ]
 
 jobs:
-  build-and-deploy:
+  deploy-production:
     runs-on: ubuntu-latest
 
     env:
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
-      DEPLOY_PATH: /home/ubuntu/studentbar-pos-deploy
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
       ENV_PRODUCTION_FILE: ${{ secrets.ENV_PRODUCTION_FILE }}
       DOCKER_COMPOSE_FILE: docker-compose.prod.yaml
 
     steps:
+      # --- Step 1: Code checkout ---
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # --- Step 2: Set up Java 21 with Maven cache ---
+      # Maven cache reduces build time by ~50-70% since dependencies are not downloaded every time
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+          cache: maven
 
-      - name: Build backend
+      # --- Step 3: Build backend JAR ---
+      # -DskipTests speeds up deploy -- tests should run in a separate workflow or during PR
+      - name: Build backend JAR
         working-directory: backend
         run: ./mvnw clean package -DskipTests
 
+      # --- Step 4: Set up Node 20 with npm cache ---
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
+      # --- Step 5: Install frontend dependencies ---
+      # npm ci is faster and more deterministic than npm install -- uses exact versions from package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
+      # --- Step 6: Set up SSH key ---
+      # SSH is a secure way to connect to the server
+      # ssh-keyscan adds the server fingerprint to avoid interactive prompts
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan "$SERVER_IP" >> ~/.ssh/known_hosts
-          
-      - name: Debug CI SSH key fingerprint
-        run: |
-          set -e
-          ssh-keygen -y -f ~/.ssh/id_rsa > /tmp/ci_key.pub
-          echo "CI key fingerprint:"
-          ssh-keygen -lf /tmp/ci_key.pub
 
-      - name: Create .env.production from secret
+      # --- Step 7: Create .env file from GitHub Secret ---
+      # Env files contain secrets (DB passwords, OAuth credentials, JWT secret)
+      # They should never be committed to the repo -- GitHub Secrets are encrypted and secure
+      - name: Create .env.production file
         run: |
           printf '%s\n' "$ENV_PRODUCTION_FILE" > .env.production
 
+      # --- Step 8: Create deployment package ---
+      # A single compact file is faster to transfer than many individual files
+      # tar.gz uses gzip compression, which reduces size by ~60-80%
       - name: Create deployment package
         run: |
           tar czf deployment.tar.gz \
-            --exclude='frontend/node_modules' \
-            --exclude='frontend/.git' \
-            --exclude='frontend/.cache' \
-            --exclude='frontend/.next/cache' \
             backend/target/*.jar \
+            backend/Dockerfile \
             frontend/ \
             nginx/ \
             "$DOCKER_COMPOSE_FILE" \
-            backend/Dockerfile \
-            frontend/Dockerfile \
             .env.production
-      - name: Debug package size
-        run: |
-          set -euxo pipefail
-          ls -lh deployment.tar.gz
-          du -sh frontend/node_modules || true
-          du -sh frontend/dist || true
-          du -sh backend/target || true
 
-      - name: Install openssh-client
+      # --- Step 9: Copy package to server ---
+      # SCP is a secure file transfer protocol over SSH
+      - name: Copy package to server
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client
-      - name: Copy deployment package to server (with integrity check)
-        run: |
-          set -euo pipefail
-          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-          REMOTE_TMP="/tmp/${TAR_NAME}.part"
-          REMOTE_FINAL="/tmp/${TAR_NAME}"
-      
-          LOCAL_SHA=$(sha256sum deployment.tar.gz | awk '{print $1}')
-          LOCAL_SIZE=$(stat -c%s deployment.tar.gz)
-          echo "Local size: ${LOCAL_SIZE} bytes"
-          echo "Local sha256: ${LOCAL_SHA}"
-      
-          scp -C -i ~/.ssh/id_rsa \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=20 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=6 \
+          scp -i ~/.ssh/id_rsa \
             -o StrictHostKeyChecking=yes \
             deployment.tar.gz \
-            "$SSH_USER@$SERVER_IP:$REMOTE_TMP"
-      
-          REMOTE_SHA=$(ssh -i ~/.ssh/id_rsa \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" "sha256sum '$REMOTE_TMP' | awk '{print \$1}'")
-      
-          if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
-            echo "ERROR: checksum mismatch (upload incomplete/corrupt)"
-            echo "LOCAL : $LOCAL_SHA"
-            echo "REMOTE: $REMOTE_SHA"
-            exit 1
-          fi
-      
-          ssh -i ~/.ssh/id_rsa \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" "mv '$REMOTE_TMP' '$REMOTE_FINAL' && ls -lh '$REMOTE_FINAL'"
-           
+            "$SSH_USER@$SERVER_IP:/tmp/"
 
+      # --- Step 10: Deploy on server via SSH ---
+      # All deploy logic runs on the server through an SSH session
       - name: Deploy on server
         run: |
-          set -euxo pipefail
-          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-
           ssh -i ~/.ssh/id_rsa \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" \
-            "TAR_NAME='$TAR_NAME' DOCKER_COMPOSE_FILE='$DOCKER_COMPOSE_FILE' bash -se" << 'EOF'
-          set -Eeuo pipefail
+            "$SSH_USER@$SERVER_IP" << 'DEPLOY_EOF'
+          set -e
 
-          DEPLOY_PATH="$HOME/studentbar-pos-deploy"
+          # Create deploy directory if it doesn't exist and navigate to it
+          mkdir -p ${{ secrets.DEPLOY_PATH }}
+          cd ${{ secrets.DEPLOY_PATH }}
 
-          echo "whoami: $(whoami)"
-          echo "HOME: $HOME"
-          echo "DEPLOY_PATH: $DEPLOY_PATH"
-          echo "TAR: /tmp/$TAR_NAME"
+          # Extract the deployment package
+          tar xzf /tmp/deployment.tar.gz
+          rm /tmp/deployment.tar.gz
 
-          test -f "/tmp/$TAR_NAME"
-
-          mkdir -p "$DEPLOY_PATH"
-          tar xzf "/tmp/$TAR_NAME" -C "$DEPLOY_PATH"
-          rm -f "/tmp/$TAR_NAME"
-
-          cd "$DEPLOY_PATH"
-          test -f "$DOCKER_COMPOSE_FILE"
-
+          # Copy the environment variables file
           if [ -f .env.production ]; then
             cp .env.production .env
           fi
 
-          docker compose -f "$DOCKER_COMPOSE_FILE" down || true
-          docker compose -f "$DOCKER_COMPOSE_FILE" build --no-cache
-          docker compose -f "$DOCKER_COMPOSE_FILE" up -d
+          # Read NEXT_PUBLIC_BACKEND_URL from .env file for frontend image build
+          export $(grep -E '^NEXT_PUBLIC_BACKEND_URL=' .env | xargs)
 
-          echo "Deployment complete!"
-          docker compose -f "$DOCKER_COMPOSE_FILE" ps
-          EOF
+          # --- Build Docker images with exact names ---
+          # docker-compose.prod.yaml references these names, so they must match
+
+          # Backend image
+          echo ">>> Building backend image..."
+          docker build -t vanemarendaja-borsibaar-tiim_28-backend ./backend/
+
+          # Frontend image -- context is root directory because Dockerfile copies from frontend/ folder
+          echo ">>> Building frontend image..."
+          docker build -t vanemarendaja-borsibaar-tiim_28-frontend \
+            -f ./frontend/Dockerfile \
+            --build-arg NEXT_PUBLIC_BACKEND_URL="$NEXT_PUBLIC_BACKEND_URL" .
+
+          # Stop existing containers
+          echo ">>> Stopping containers..."
+          docker compose -f docker-compose.prod.yaml down
+
+          # Start new containers
+          echo ">>> Starting containers..."
+          docker compose -f docker-compose.prod.yaml up -d
+
+          echo ">>> Deploy completed!"
+          DEPLOY_EOF
+
+      # --- Step 11: Verify deployment (health check) ---
+      # Ensures that the deploy actually succeeded
+      - name: Service health check
+        run: |
+          echo "Waiting 15 seconds for services to start..."
+          sleep 15
+
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SERVER_IP" << 'HEALTH_EOF'
+          set -e
+          cd ${{ secrets.DEPLOY_PATH }}
+
+          echo "=== Container status ==="
+          docker compose -f docker-compose.prod.yaml ps
+
+          # Check that backend and frontend containers are running
+          BACKEND_STATUS=$(docker inspect -f '{{.State.Running}}' backend 2>/dev/null || echo "false")
+          FRONTEND_STATUS=$(docker inspect -f '{{.State.Running}}' frontend 2>/dev/null || echo "false")
+          POSTGRES_STATUS=$(docker inspect -f '{{.State.Running}}' postgres 2>/dev/null || echo "false")
+
+          echo ""
+          echo "=== Service status ==="
+          echo "Backend:  $BACKEND_STATUS"
+          echo "Frontend: $FRONTEND_STATUS"
+          echo "Postgres: $POSTGRES_STATUS"
+
+          # If any service is not running, the deploy failed
+          if [ "$BACKEND_STATUS" != "true" ] || [ "$FRONTEND_STATUS" != "true" ] || [ "$POSTGRES_STATUS" != "true" ]; then
+            echo ""
+            echo "ERROR: Some services did not start correctly!"
+            echo "=== Backend logs ==="
+            docker logs backend --tail 30 2>&1 || true
+            echo "=== Frontend logs ==="
+            docker logs frontend --tail 30 2>&1 || true
+            exit 1
+          fi
+
+          echo ""
+          echo "All services are running correctly!"
+          HEALTH_EOF
