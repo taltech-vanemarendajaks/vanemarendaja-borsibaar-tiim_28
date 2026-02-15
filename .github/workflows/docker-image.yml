@@ -41,10 +41,14 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Ensure target directory exists on server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA"
+
       - name: Copy images to server
         run: |
-          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/team28/opt/deployer-docker/
-          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/team28/opt/deployer-docker/
+          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
 
       - name: SSH and load images into registry
         run: |
