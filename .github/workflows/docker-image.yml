@@ -76,6 +76,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client
+          
+      - name: SSH smoke test (no scp yet)
+        run: |
+          set -euxo pipefail
+          ssh -vv -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o PreferredAuthentications=publickey \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SERVER_IP" \
+            "echo SSH_OK && whoami && hostname && touch /tmp/gha-ssh-ok-${GITHUB_RUN_ID} && ls -l /tmp/gha-ssh-ok-${GITHUB_RUN_ID}"
 
       - name: Copy deployment package to server
         run: |
