@@ -90,6 +90,8 @@ jobs:
       - name: Copy deployment package to server
         run: |
           set -euxo pipefail
+          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
+
           scp -C -i ~/.ssh/id_rsa \
             -o IdentitiesOnly=yes \
             -o BatchMode=yes \
@@ -98,13 +100,25 @@ jobs:
             -o ServerAliveCountMax=3 \
             -o StrictHostKeyChecking=yes \
             deployment.tar.gz \
-            "$SSH_USER@$SERVER_IP:/tmp/deployment.tar.gz"
+            "$SSH_USER@$SERVER_IP:/tmp/$TAR_NAME"
 
-     
+          # Debug: kinnita, et fail päriselt jõudis serverisse
+          ssh -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SERVER_IP" "ls -lh /tmp/$TAR_NAME"
+
       - name: Deploy on server
         run: |
+          set -euxo pipefail
           TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
+
           ssh -i ~/.ssh/id_rsa \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=yes \
             "$SSH_USER@$SERVER_IP" \
             "TAR_NAME='$TAR_NAME' DOCKER_COMPOSE_FILE='$DOCKER_COMPOSE_FILE' bash -se" << 'EOF'
