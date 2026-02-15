@@ -64,4 +64,4 @@ jobs:
             sudo docker load < backend.tar &&
             sudo docker tag vanemarendaja-borsibaar-tiim_28-frontend:latest vanemarendaja-borsibaar-tiim_28-frontend:latest &&
             sudo docker tag vanemarendaja-borsibaar-tiim_28-backend:latest vanemarendaja-borsibaar-tiim_28-backend:latest &&
-            sudo docker-compose -f docker-compose.prod.yaml up -d --no-build"
+            sudo docker-compose -f docker-compose.prod.yaml up -d"
