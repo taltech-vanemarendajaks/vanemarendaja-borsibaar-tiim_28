@@ -71,6 +71,13 @@ jobs:
             backend/Dockerfile \
             frontend/Dockerfile \
             .env.production
+      - name: Debug package size
+        run: |
+          set -euxo pipefail
+          ls -lh deployment.tar.gz
+          du -sh frontend/node_modules || true
+          du -sh frontend/dist || true
+          du -sh backend/target || true
 
       - name: Install openssh-client
         run: |
