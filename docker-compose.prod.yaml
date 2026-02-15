@@ -1,81 +1,87 @@
-version: "3.3"
+networks:
+  borsibaar-network:
+    driver: bridge
+
 services:
+  backend:
+    container_name: backend
+    depends_on:
+      postgres:
+        condition: service_started
+    environment:
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+    expose:
+    - '8080'
+    image: vanemarendaja-borsibaar-tiim_28-backend
+    networks:
+      borsibaar-network: {}
+    ports:
+    - 127.0.0.1:8080:8080/tcp
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  frontend:
+    container_name: frontend
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      BACKEND_URL: http://backend:8080
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+    expose:
+    - '3000'
+    image: vanemarendaja-borsibaar-tiim_28-frontend
+    networks:
+      borsibaar-network: {}
+    ports:
+    - 127.0.0.1:3000:3000/tcp
+    restart: unless-stopped
+
+  nginx:
+    container_name: nginx
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+    image: nginx:alpine
+    networks:
+      borsibaar-network: {}
+    ports:
+    - published: 80
+      target: 80
+    - published: 443
+      target: 443
+    profiles:
+    - do-not-start
+    restart: unless-stopped
+    volumes:
+    - /home/ubuntu/borsibaar/nginx/conf.d:/etc/nginx/conf.d:ro
+    - /home/ubuntu/borsibaar/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - /home/ubuntu/borsibaar/nginx/ssl:/etc/nginx/ssl:ro
+
   postgres:
-    image: postgres:17
-    container_name: borsibaar-db
+    container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    image: postgres:17
+    networks:
+      borsibaar-network: {}
     ports:
-      - "5432:5432"
+    - published: 5432
+      target: 5432
+    restart: unless-stopped
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - borsibaar-network
-
-  backend:
-    build:
-      context: backend
-      dockerfile: Dockerfile
-    container_name: borsibaar-backend
-    expose:
-      - "8080"
-    env_file:
-      - .env
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      # Production URLs for CORS and OAuth redirects (now through nginx)
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-      APP_FRONTEND_URL: ${APP_FRONTEND_URL}
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    networks:
-      - borsibaar-network
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        # Build-time variable for client-side OAuth redirects (now through nginx)
-        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
-    container_name: borsibaar-frontend
-    expose:
-      - "3000"
-    environment:
-      # Server-side: Use Docker network for internal communication
-      BACKEND_URL: http://backend:8080
-      # Client-side: Public URL for OAuth redirects (now through nginx)
-      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
-    restart: unless-stopped
-    depends_on:
-      - backend
-    networks:
-      - borsibaar-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: borsibaar-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-    networks:
-      - borsibaar-network
-
+    - postgres_data:/var/lib/postgresql/data:rw
+version: '3.3'
 volumes:
-  postgres_data:
-
-networks:
-  borsibaar-network:
-    driver: bridge
+  postgres_data: {}
