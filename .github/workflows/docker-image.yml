@@ -65,58 +65,52 @@ jobs:
             frontend/Dockerfile \
             .env.production
 
-      - name: Install sshpass and openssh-client
+      - name: Install openssh-client
         run: |
           sudo apt-get update
-          sudo apt-get install -y sshpass openssh-client
+          sudo apt-get install -y openssh-client
 
       - name: Copy deployment package to server
         run: |
+          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
+          mv deployment.tar.gz "$TAR_NAME"
           scp -i ~/.ssh/id_rsa \
             -o StrictHostKeyChecking=yes \
-            deployment.tar.gz \
-            "$SSH_USER@$SERVER_IP:/tmp/"
+            "$TAR_NAME" \
+            "$SSH_USER@$SERVER_IP:/tmp/$TAR_NAME"
 
       - name: Deploy on server
         run: |
+          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
           ssh -i ~/.ssh/id_rsa \
             -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" << EOF
-          set -e
+            "$SSH_USER@$SERVER_IP" \
+            "TAR_NAME='$TAR_NAME' DOCKER_COMPOSE_FILE='$DOCKER_COMPOSE_FILE' bash -se" << 'EOF'
+          set -Eeuo pipefail
 
-          mkdir -p $DEPLOY_PATH
-          cd $DEPLOY_PATH
+          DEPLOY_PATH="$HOME/studentbar-pos-deploy"
 
-          # Extract deployment package
-          tar xzf /tmp/deployment.tar.gz
-          rm /tmp/deployment.tar.gz
+          echo "whoami: $(whoami)"
+          echo "HOME: $HOME"
+          echo "DEPLOY_PATH: $DEPLOY_PATH"
+          echo "TAR: /tmp/$TAR_NAME"
 
-          # Check if docker-compose file exists
-          if [ ! -f "$DOCKER_COMPOSE_FILE" ]; then
-            echo "ERROR: $DOCKER_COMPOSE_FILE not found!"
-            exit 1
-          fi
+          test -f "/tmp/$TAR_NAME"
 
-          # Copy environment file if exists
+          mkdir -p "$DEPLOY_PATH"
+          tar xzf "/tmp/$TAR_NAME" -C "$DEPLOY_PATH"
+          rm -f "/tmp/$TAR_NAME"
+
+          cd "$DEPLOY_PATH"
+          test -f "$DOCKER_COMPOSE_FILE"
+
           if [ -f .env.production ]; then
             cp .env.production .env
           fi
 
-          # Clean/repair builder cache and avoid BuildKit flakiness
-          # sudo systemctl restart docker
-          # docker buildx prune -af || true
-          # docker builder prune -af || true
-          # docker image prune -af || true
-
-          # Stop existing containers
-          docker compose -f "$DOCKER_COMPOSE_FILE" down
-
-          # Rebuild and start containers
+          docker compose -f "$DOCKER_COMPOSE_FILE" down || true
           docker compose -f "$DOCKER_COMPOSE_FILE" build --no-cache
           docker compose -f "$DOCKER_COMPOSE_FILE" up -d
-
-          # Clean up old images
-          # docker image prune -f
 
           echo "Deployment complete!"
           docker compose -f "$DOCKER_COMPOSE_FILE" ps
