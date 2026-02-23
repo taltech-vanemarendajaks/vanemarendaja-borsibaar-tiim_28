@@ -49,13 +49,15 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA"
 
-      - name: Copy files to server
+      - name: Copy files to server (robust)
         run: |
-          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-
+          set -euo pipefail
+          SCP_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+          scp $SCP_OPTS frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp $SCP_OPTS backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp $SCP_OPTS docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp $SCP_OPTS .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          
       - name: Load images and deploy
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
