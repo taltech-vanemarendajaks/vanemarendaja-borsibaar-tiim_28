@@ -59,9 +59,24 @@ jobs:
       - name: Load images and deploy
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd /home/${{ secrets.SSH_USER }}/borsibaar/testGA &&
-            sudo docker load < frontend.tar &&
-            sudo docker load < backend.tar &&
-            sudo docker tag vanemarendaja-borsibaar-tiim_28-frontend:latest vanemarendaja-borsibaar-tiim_28-frontend:latest &&
-            sudo docker tag vanemarendaja-borsibaar-tiim_28-backend:latest vanemarendaja-borsibaar-tiim_28-backend:latest &&
-            sudo docker-compose -f docker-compose.prod.yaml up -d"
+            set -euo pipefail
+
+            APP_DIR=/home/${{ secrets.SSH_USER }}/borsibaar/testGA
+            cd \"\$APP_DIR\"
+
+            # Safety checks
+            test -f docker-compose.prod.yaml
+
+            # Graceful shutdown (ignore errors if nothing is running)
+            sudo docker-compose -f docker-compose.prod.yaml stop --timeout 30 || true
+
+            # Safe down: remove orphans, keep volumes by default
+            sudo docker-compose -f docker-compose.prod.yaml down --remove-orphans || true
+
+            # Load new images
+            sudo docker load < frontend.tar
+            sudo docker load < backend.tar
+
+            # Start
+            sudo docker-compose -f docker-compose.prod.yaml up -d
+          "
