@@ -64,9 +64,6 @@ jobs:
             APP_DIR=/home/${{ secrets.SSH_USER }}/borsibaar/testGA
             cd \"\$APP_DIR\"
 
-            # Safety checks
-            test -f docker-compose.prod.yaml
-
             # Graceful shutdown (ignore errors if nothing is running)
             sudo docker-compose -f docker-compose.prod.yaml stop --timeout 30 || true
 
