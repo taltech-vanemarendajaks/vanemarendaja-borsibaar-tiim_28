@@ -51,19 +51,19 @@ jobs:
         run: |
           ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-            "echo SSH_OK && mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA && test -w /home/${{ secrets.SSH_USER }}/borsibaar/testGA && echo WRITE_OK"
+            "echo SSH_OK && mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar && test -w /home/${{ secrets.SSH_USER }}/borsibaar && echo WRITE_OK"
 
       - name: Copy files to server
         run: |
-          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
-          scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
+          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
 
       - name: Load images and deploy
         shell: bash
         run: |
-          REMOTE_DIR="/home/${{ secrets.SSH_USER }}/borsibaar/testGA"
+          REMOTE_DIR="/home/${{ secrets.SSH_USER }}/borsibaar"
       
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "bash -se" <<EOF
           set -e
@@ -80,4 +80,3 @@ jobs:
 # Test 2
 # UPdate server  03.01.26
 # docker shut down before test
-
