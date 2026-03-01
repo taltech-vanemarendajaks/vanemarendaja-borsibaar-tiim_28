@@ -45,9 +45,12 @@ jobs:
         run: |
           printf '%s\n' "${{ secrets.ENV_PRODUCTION_FILE }}" > .env
 
-      - name: Ensure target directory exists on server
+      - name: Ensure target directory exists on server (and verify SSH key)
+        shell: bash
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA"
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "echo SSH_OK && mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar/testGA && test -w /home/${{ secrets.SSH_USER }}/borsibaar/testGA && echo WRITE_OK"
 
       - name: Copy files to server
         run: |
@@ -66,4 +69,5 @@ jobs:
             sudo docker tag vanemarendaja-borsibaar-tiim_28-backend:latest vanemarendaja-borsibaar-tiim_28-backend:latest &&
             sudo docker-compose -f docker-compose.prod.yaml up -d"
 # Test 2
+# UPdate server  03.01.26
 
