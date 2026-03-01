@@ -63,12 +63,12 @@ jobs:
       - name: Load images and deploy
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            set -e
             cd /home/${{ secrets.SSH_USER }}/borsibaar/testGA &&
-            sudo docker load < frontend.tar &&
-            sudo docker load < backend.tar &&
-            sudo docker tag vanemarendaja-borsibaar-tiim_28-frontend:latest vanemarendaja-borsibaar-tiim_28-frontend:latest &&
-            sudo docker tag vanemarendaja-borsibaar-tiim_28-backend:latest vanemarendaja-borsibaar-tiim_28-backend:latest &&
-            sudo docker-compose -f docker-compose.prod.yaml up -d"
+            sudo docker-compose -f docker-compose.prod.yaml stop &&
+            sudo docker load -i frontend.tar &&
+            sudo docker load -i backend.tar &&
+            sudo docker-compose -f docker-compose.prod.yaml up -d --force-recreate
 # Test 2
 # UPdate server  03.01.26
 # docker shut down before test
