@@ -1,117 +1,83 @@
-name: Build and Deploy
+name: Build, Transfer, Load, and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
-    env:
-      SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      SERVER_IP: ${{ secrets.SERVER_IP }}
-      DEPLOY_PATH: ~/studentbar-pos-deploy
-      ENV_PRODUCTION_FILE: ${{ secrets.ENV_PRODUCTION_FILE }}
-      DOCKER_COMPOSE_FILE: docker-compose.prod.yaml
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build frontend image
+        run: |
+          docker build --platform linux/amd64 --build-arg NEXT_PUBLIC_BACKEND_URL="https://borsibaar28.zapto.org" -t vanemarendaja-borsibaar-tiim_28-frontend:latest -f frontend/Dockerfile .
+          docker save vanemarendaja-borsibaar-tiim_28-frontend:latest > frontend.tar
+
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '21'
 
-      - name: Build backend
-        working-directory: backend
-        run: ./mvnw clean package -DskipTests
+      - name: Build backend JAR
+        run: |
+          cd backend
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      - name: Set up SSH key
+      - name: Build backend image
+        run: |
+          docker build -t vanemarendaja-borsibaar-tiim_28-backend:latest ./backend
+          docker save vanemarendaja-borsibaar-tiim_28-backend:latest > backend.tar
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan "$SERVER_IP" >> ~/.ssh/known_hosts
-
-      - name: Create .env.production from secret
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Create .env file from secret
         run: |
-          printf '%s\n' "$ENV_PRODUCTION_FILE" > .env.production
+          printf '%s\n' "${{ secrets.ENV_PRODUCTION_FILE }}" > .env
 
-      - name: Create deployment package
+      - name: Ensure target directory exists on server (and verify SSH key)
+        shell: bash
         run: |
-          tar czf deployment.tar.gz \
-            backend/target/*.jar \
-            frontend/ \
-            nginx/ \
-            "$DOCKER_COMPOSE_FILE" \
-            backend/Dockerfile \
-            frontend/Dockerfile \
-            .env.production
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "echo SSH_OK && mkdir -p /home/${{ secrets.SSH_USER }}/borsibaar && test -w /home/${{ secrets.SSH_USER }}/borsibaar && echo WRITE_OK"
 
-      - name: Install openssh-client
+      - name: Copy files to server
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client
+          scp -o StrictHostKeyChecking=no frontend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no backend.tar ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yaml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
+          scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/
 
-      - name: Copy deployment package to server
+      - name: Load images and deploy
+        shell: bash
         run: |
-          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-          mv deployment.tar.gz "$TAR_NAME"
-          scp -i ~/.ssh/id_rsa \
-            -o StrictHostKeyChecking=yes \
-            "$TAR_NAME" \
-            "$SSH_USER@$SERVER_IP:/tmp/$TAR_NAME"
-
-      - name: Deploy on server
-        run: |
-          TAR_NAME="deployment-${GITHUB_RUN_ID}.tar.gz"
-          ssh -i ~/.ssh/id_rsa \
-            -o StrictHostKeyChecking=yes \
-            "$SSH_USER@$SERVER_IP" \
-            "TAR_NAME='$TAR_NAME' DOCKER_COMPOSE_FILE='$DOCKER_COMPOSE_FILE' bash -se" << 'EOF'
-          set -Eeuo pipefail
-
-          DEPLOY_PATH="$HOME/studentbar-pos-deploy"
-
-          echo "whoami: $(whoami)"
-          echo "HOME: $HOME"
-          echo "DEPLOY_PATH: $DEPLOY_PATH"
-          echo "TAR: /tmp/$TAR_NAME"
-
-          test -f "/tmp/$TAR_NAME"
-
-          mkdir -p "$DEPLOY_PATH"
-          tar xzf "/tmp/$TAR_NAME" -C "$DEPLOY_PATH"
-          rm -f "/tmp/$TAR_NAME"
-
-          cd "$DEPLOY_PATH"
-          test -f "$DOCKER_COMPOSE_FILE"
-
-          if [ -f .env.production ]; then
-            cp .env.production .env
-          fi
-
-          docker compose -f "$DOCKER_COMPOSE_FILE" down || true
-          docker compose -f "$DOCKER_COMPOSE_FILE" build --no-cache
-          docker compose -f "$DOCKER_COMPOSE_FILE" up -d
-
-          echo "Deployment complete!"
-          docker compose -f "$DOCKER_COMPOSE_FILE" ps
+          REMOTE_DIR="/home/${{ secrets.SSH_USER }}/borsibaar"
+      
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "bash -se" <<EOF
+          set -e
+          cd "$REMOTE_DIR"
+      
+          sudo docker-compose -f docker-compose.prod.yaml down
+      
+          sudo docker load -i frontend.tar
+          sudo docker load -i backend.tar
+      
+          sudo docker-compose -f docker-compose.prod.yaml up -d --force-recreate
           EOF
+
+# Test 2
+# UPdate server  03.01.26
+# docker shut down before test
+# new .env everywhere
