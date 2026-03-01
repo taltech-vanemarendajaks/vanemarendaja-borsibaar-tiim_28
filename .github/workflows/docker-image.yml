@@ -80,3 +80,4 @@ jobs:
 # Test 2
 # UPdate server  03.01.26
 # docker shut down before test
+# new .env everywhere
