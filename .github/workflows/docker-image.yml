@@ -61,14 +61,22 @@ jobs:
           scp -o StrictHostKeyChecking=no .env ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SSH_USER }}/borsibaar/testGA/
 
       - name: Load images and deploy
+        shell: bash
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            set -e
-            cd /home/${{ secrets.SSH_USER }}/borsibaar/testGA &&
-            sudo docker-compose -f docker-compose.prod.yaml stop &&
-            sudo docker load -i frontend.tar &&
-            sudo docker load -i backend.tar &&
-            sudo docker-compose -f docker-compose.prod.yaml up -d --force-recreate
+          REMOTE_DIR="/home/${{ secrets.SSH_USER }}/borsibaar/testGA"
+      
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "bash -se" <<EOF
+          set -e
+          cd "$REMOTE_DIR"
+      
+          sudo docker-compose -f docker-compose.prod.yaml down
+      
+          sudo docker load -i frontend.tar
+          sudo docker load -i backend.tar
+      
+          sudo docker-compose -f docker-compose.prod.yaml up -d --force-recreate
+          EOF
+
 # Test 2
 # UPdate server  03.01.26
 # docker shut down before test
