@@ -70,4 +70,5 @@ jobs:
             sudo docker-compose -f docker-compose.prod.yaml up -d"
 # Test 2
 # UPdate server  03.01.26
+# docker shut down before test
 
